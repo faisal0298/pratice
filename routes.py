@@ -1,5 +1,6 @@
 from collections import UserString
 from dataclasses import dataclass
+from datetime import date, datetime
 from fastapi import APIRouter,Response, status, Header, Depends
 import models
 import serializer
@@ -12,14 +13,14 @@ from typing import Optional
 from fastapi.security import HTTPBasicCredentials,HTTPBearer
 from jose import JWTError, jwt
 from helpers import SECRET_KEY, ALGORITHM, access_token
-
+from logger import console_logger
 
 
 models.Base.metadata.create_all(bind=engine)
 
 router = FastAPI()
 
-# automatically add roles when started and nothing is present in database
+# automatically add roles when started when nothing is present in database
 @router.on_event("startup")
 def add_role():
     db=get_db()
@@ -78,7 +79,7 @@ def get_user(response:Response,email:Optional[str]=None,db:Session=Depends(get_d
 def signup(response:Response, user:Usercreate, db:Session = Depends(get_db)):
     _user=helpers.get_email(db,user.email)
     rolename=helpers.get_rolename(db,user.role)
-    print(user.dict(exclude_none=True))
+    console_logger.debug(user.dict(exclude_none=True))
 
     if _user:
         response.status_code=409
@@ -121,7 +122,7 @@ def signin(response:Response,email:str=Header(...),password:str=Header(...),db:S
     }
 
 # def token_validate(token=Depends(HTTPBearer())):
-#     print(token)
+#     console_logger.debug(token)
 #     return token
 
 @router.post("/token/validate")
@@ -164,7 +165,7 @@ def Authorize_refresh(response:Response ,credentials:HTTPBasicCredentials = Depe
 
     usercheck=db.query(models.User).filter(models.User.id == check.user_id).first()
     new_access_token = access_token(usercheck.email)
-    print(new_access_token)
+    console_logger.debug(new_access_token)
     check.access_token=new_access_token
     db.commit()
     return new_access_token
@@ -177,7 +178,7 @@ def logout(response:Response,credentials:HTTPBasicCredentials = Depends(HTTPBear
     token=credentials.credentials
 
     user=db.query(models.Usersession).filter(models.Usersession.access_token == token).first()
-    print(user)
+    console_logger.debug(user)
     if not user:
         response.status_code = 403
         return "user doesnt exist"
@@ -197,26 +198,47 @@ def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
     
     _user.username=user.username
     _user.phone=user.phone
+    _user.updated_at=datetime.utcnow()
 
     db.commit()
     return user
 
 # put and patch both works the same    
 
-@router.patch("/update")
-def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
+# @router.patch("/update")
+# def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
 
-    _user=db.query(models.User).filter(models.User.email==user.email).first()
+#     _user=db.query(models.User).filter(models.User.email==user.email).first()
 
-    if not _user:
-        response.status_code=404
-        return "user not found"
+#     if not _user:
+#         response.status_code=404
+#         return "user not found"
     
-    _user.username=user.username
-    _user.phone=user.phone
+#     _user.username=user.username
+#     _user.phone=user.phone
 
-    db.commit()
-    return user
+#     db.commit()
+#     return user
+
+@router.get("/datacollect")
+def created(response:Response, createdAt:Optional[str]=None, end:Optional[str]=None, db:Session=Depends(get_db)):
+
+    # end=datetime.utcnow()
+    created=db.query(models.User).filter(models.User.created_at.between(createdAt,end)).all()
+    all_users=[]
+
+    if created:
+        
+        for data in created:
+            all_users.append(data.payload())
+        console_logger.debug(created)
+        return all_users
+    else:
+        response.status_code=404
+        return dict(all_users)
+    
+    
+
 
 
     

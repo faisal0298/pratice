@@ -1,3 +1,4 @@
+from email.policy import default
 from enum import unique
 from sqlalchemy import Column,Integer,ForeignKey,String,DateTime
 from sqlalchemy.orm import relationship
@@ -21,6 +22,8 @@ class User(Base):
     email = Column(String(200),unique=True)
     phone = Column(String(10),default=None)
     password = Column(String(240),nullable=False)
+    created_at= Column(DateTime,default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=None)
     role_id = Column(Integer, ForeignKey('role.id', ondelete='SET NULL'))
     role = relationship('Role',foreign_keys='User.role_id')
     usersession=relationship("Usersession", back_populates="user")
@@ -30,7 +33,8 @@ class User(Base):
             "username": self.username,
             "email": self.email,
             "phone": self.phone,
-            "role":self.role.role_name
+            "role":self.role.role_name,
+            "created_at":self.created_at
         }
         
 
