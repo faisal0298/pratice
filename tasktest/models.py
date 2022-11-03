@@ -4,7 +4,7 @@ from sqlalchemy import Column,Integer,ForeignKey,String,DateTime
 from sqlalchemy.orm import relationship
 import datetime
 from sqlalchemy.types import DateTime
-from database import Base
+from tasktest.database import Base
 
 
 

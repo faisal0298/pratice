@@ -1,20 +1,31 @@
 from collections import UserString
 from dataclasses import dataclass
 from datetime import date, datetime
+from urllib import response
 from fastapi import APIRouter,Response, status, Header, Depends
-import models
-import serializer
-from serializer import Rolecreate, Usercreate,Userupdate
-import helpers
+import tasktest.models as models
+import tasktest.serializer as serializer
+from tasktest.serializer import Rolecreate, Usercreate,Userupdate, passwordupdate,CreateOTP, verifyOTP
+import tasktest.helpers as helpers
 from sqlalchemy.orm import Session
-from database import get_db,engine
+from tasktest.database import get_db,engine
 from fastapi import FastAPI, HTTPException
-from typing import Optional
+from typing import Optional,Union
 from fastapi.security import HTTPBasicCredentials,HTTPBearer
 from jose import JWTError, jwt
-from helpers import SECRET_KEY, ALGORITHM, access_token
-from logger import console_logger
+from tasktest.helpers import SECRET_KEY, ALGORITHM, access_token
+from tasktest.logger import console_logger
+import pyotp 
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import FileResponse
+import shutil
+import os
 
+
+# file_path= "/home/diycam/Desktop/task/workspac/"         
+file_path=os.path.join(os.getcwd(),"workspace")         #always use his method to give path
+
+otp={}
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -186,6 +197,18 @@ def logout(response:Response,credentials:HTTPBasicCredentials = Depends(HTTPBear
     db.commit()
     return "logout successfully"
 
+@router.patch("/forgot")
+def forgot_password(response:Response, user:passwordupdate, db:Session=Depends(get_db)):
+    _user=db.query(models.User).filter(models.User.email==user.email).first()
+
+    if not _user:
+        response.status_code=404
+        return "Invalid Email"
+    
+    _user.password=helpers.hash_password(user.password)
+    db.commit()
+    return user.email
+
 
 @router.put("/update")
 def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
@@ -203,22 +226,6 @@ def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
     db.commit()
     return user
 
-# put and patch both works the same    
-
-# @router.patch("/update")
-# def update(response:Response,user:Userupdate,db:Session=Depends(get_db)):
-
-#     _user=db.query(models.User).filter(models.User.email==user.email).first()
-
-#     if not _user:
-#         response.status_code=404
-#         return "user not found"
-    
-#     _user.username=user.username
-#     _user.phone=user.phone
-
-#     db.commit()
-#     return user
 
 @router.get("/datacollect")
 def created(response:Response, createdAt:Optional[str]=None, end:Optional[str]=None, db:Session=Depends(get_db)):
@@ -228,17 +235,61 @@ def created(response:Response, createdAt:Optional[str]=None, end:Optional[str]=N
     all_users=[]
 
     if created:
-        
         for data in created:
             all_users.append(data.payload())
         console_logger.debug(created)
         return all_users
     else:
         response.status_code=404
-        return dict(all_users)
-    
+        return all_users
     
 
+@router.post("/otp/send")
+def send_otp(response:Response, email:CreateOTP,db:Session=Depends(get_db)):
+    global otp
+
+    user=db.query(models.User).filter(models.User.email==email.email).first()
+
+    if not user:
+        response.status_code=404
+        return "user not found"
+
+    # totp = pyotp.TOTP(OTP_Secret)
+    totp=helpers.OTP().generatetotp()
+    # code=totp.now()
+
+    otp[email.email]={"OTP":totp,"created":datetime.utcnow()}
+    console_logger.debug(otp)
+    return totp
+
+  
+@router.post("/check/otp")
+def verify_otp(response:Response,verify:verifyOTP):
+    global otp 
+
+    code=helpers.OTP().verifyotp(verify.otp_code)
+    if not code: 
+        response.status_code=404
+        return "invalid"
+    return "success"
 
 
-    
+@router.post("/uploadfile")
+def create_upload_file(file: UploadFile = File(...)):
+    print(file.filename,file.file)
+    with open(f'{file_path}/{file.filename}',"wb",buffering=0) as buffer:
+        shutil.copyfileobj(file.file,buffer)
+    return {"filename":file.filename}
+
+
+@router.post('/chat/send')
+def send_message(msg: str):
+    with open(f'{file_path}/faisal.txt', "a") as file_object:
+        file_object.write(f"{msg} \n")
+    return "success"
+
+@router.get("/chat/read")
+def read_message():
+    with open(f'{file_path}/faisal.txt', "r") as f:
+        msg=f.readlines()
+    return msg

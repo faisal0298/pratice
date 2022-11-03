@@ -1,7 +1,7 @@
 from email.headerregistry import DateHeader
 from typing import Optional
 from pydantic import BaseModel,validator
-import models
+import tasktest.models as models
 import datetime
 
 
@@ -15,8 +15,8 @@ class Usercreate(BaseModel):
 
     @validator('role')
     def role_name(cls, v):
-        from helpers import get_role_info
-        from database import get_db
+        from tasktest.helpers import get_role_info
+        from tasktest.database import get_db
         if v in get_role_info(db=get_db()):
             return v
         raise "error"
@@ -30,5 +30,15 @@ class Userupdate(BaseModel):
     phone: Optional[int] = None
     email:str
 
-    
+class passwordupdate(BaseModel):
+    password: str
+    email : str
+
+class CreateOTP(BaseModel):
+    email: str
+
+class verifyOTP(BaseModel):
+    otp_code: str
+
+
 

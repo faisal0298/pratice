@@ -1,10 +1,14 @@
 from datetime import datetime,timedelta
 from typing import Any,Union
-import models
+import tasktest.models as models
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
+from enum import Enum
+# from routes import OTP_Secret
+import pyotp
+
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -15,6 +19,7 @@ ALGORITHM = "HS256"
 ACCESS_EXPIRE_MINUTES = 10
 REFRESH_EXPIRE_MINUTES = 60 * 7
 
+OTP_Secret = "OKTEAI7KXQH62P7DNPNBLX7HLYJQEBYC"
 
 def get_role_info(db:Session):
     roles=db.query(models.Role.role_name).all()
@@ -51,4 +56,19 @@ def refresh_token(subject: Union[str, Any], expires_delta: int = None):
     
     to_encode = {"exp": expires_delta, "sub": str(subject)}
     encoded_jwt = jwt.encode(to_encode,SECRET_KEY, ALGORITHM)
-    return encoded_jwt
+    return encoded_jwt 
+
+
+class OTP:
+
+    def __init__(self):        
+        self.ObjOpt = pyotp.TOTP(OTP_Secret,interval=60)
+
+    def generatetotp(self):
+        return self.ObjOpt.now()
+
+    # def generatetotp():
+    #     return pyotp.TOTP(OTP_Secret,interval=60*3).now()
+
+    def verifyotp(self, otp_code):        
+        return self.ObjOpt.verify(otp_code) 

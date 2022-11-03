@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import mysql.connector
 import time
-from logger import console_logger
+from tasktest.logger import console_logger
 
 
 def create_database():
