@@ -40,5 +40,9 @@ class CreateOTP(BaseModel):
 class verifyOTP(BaseModel):
     otp_code: str
 
-
+class reqcreate(BaseModel):
+    name:str
+    gender:str
+    email:str 
+    status:Optional[str]= None
 

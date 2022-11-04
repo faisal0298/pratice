@@ -5,7 +5,7 @@ from urllib import response
 from fastapi import APIRouter,Response, status, Header, Depends
 import tasktest.models as models
 import tasktest.serializer as serializer
-from tasktest.serializer import Rolecreate, Usercreate,Userupdate, passwordupdate,CreateOTP, verifyOTP
+from tasktest.serializer import Rolecreate, reqcreate,Usercreate,Userupdate, passwordupdate,CreateOTP, verifyOTP
 import tasktest.helpers as helpers
 from sqlalchemy.orm import Session
 from tasktest.database import get_db,engine
@@ -20,9 +20,13 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 import shutil
 import os
+from fastapi.responses import FileResponse
+import requests
+import json
 
 
-# file_path= "/home/diycam/Desktop/task/workspac/"         
+
+# file_path= "/home/diycam/Desktop/task/workspace/"         
 file_path=os.path.join(os.getcwd(),"workspace")         #always use his method to give path
 
 otp={}
@@ -292,4 +296,37 @@ def send_message(msg: str):
 def read_message():
     with open(f'{file_path}/faisal.txt', "r") as f:
         msg=f.readlines()
-    return msg
+        data=[]
+        x=0
+        for line in msg:
+            x+=1
+            nline = (str(x)+ " " +line)
+            data.append(nline)
+    return data
+
+@router.get("/download/file")
+def download_file():
+    download_path=os.path.join(file_path,"faisal.txt")
+    return FileResponse(path=download_path,filename="out.txt")
+
+
+@router.get("/item")
+def request():
+    r = requests.get('https://randomuser.me/api/')
+    return json.loads(r.content)
+
+
+@router.post("/provide")
+def provide(response:Response,user:reqcreate):
+    print(user.dict())
+    payload=user.dict()
+    headers = {
+  'Authorization': 'Bearer ec75e41db8c9cc9e3e785b3ba229f4f8bfa7316389b4afaac58dd52833646a03'
+}
+    r = requests.request("POST","https://gorest.co.in/public/v2/users",data=payload,headers=headers)
+    if r.status_code == 201:
+        return "Success"
+    response.status_code=r.status_code
+    print(r.content)
+    return "Unauthorized"
+
